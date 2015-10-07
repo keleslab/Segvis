@@ -2,3 +2,6 @@
 Makefile
 .git/*
 poster/*
+inst/extdata/peaks
+inst/extdata/reads
+inst/rscripts
