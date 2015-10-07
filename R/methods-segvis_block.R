@@ -3,45 +3,56 @@
 
 ## Get methods
 
-#' @rdname methods-segvis_block-gs
-#' @name name
+##' @rdname name-methods
+##' @aliases name
+##' @docType methods
+##' @exportMethod name
 setMethod("name",
   signature = signature(object = "segvis_block"),
   definition = function(object)object@name
 )
 
-#' @rdname methods-segvis_block-gs
-#' @name regions
+##' @rdname regions-methods
+##' @aliases regions
+##' @docType methods
+##' @exportMethod regions
 setMethod("regions",
   signature = signature(object = "segvis_block"),
   definition = function(object)object@regions
 )
 
-#' @rdname methods-segvis_block-gs
-#' @name cover_table
+##' @rdname cover_table-methods
+##' @aliases cover_table
+##' @docType methods
+##' @exportMethod cover_table
 setMethod("cover_table",
   signature = signature(object = "segvis_block"),
   definition = function(object)object@cover_table
 )           
 
-#' @rdname methods-segvis_block-gs
-#' @name bandwidth
+##' @rdname bandwidth-methods
+##' @aliases bandwidth
+##' @docType methods
+##' @exportMethod bandwidth
 setMethod("bandwidth",
   signature = signature(object = "segvis_block"),
   definition = function(object)object@bandwidth
 )           
 
-#' @rdname methods-segvis_block-gs
-#' @name normConst
+##' @rdname normConst-methods
+##' @aliases normConst
+##' @docType methods
+##' @exportMethod normConst
 setMethod("normConst",
   signature = signature(object = "segvis_block"),
   definition = function(object)object@normConst
 )
 
-## Set methods
 
-#' @rdname methods-segvis_block-gs
-#' @name name
+##' @rdname name-methods
+##' @aliases name<-
+##' @docType methods
+##' @exportMethod name<-
 setReplaceMethod("name",
   signature = signature(object = "segvis_block",value = "character"),
   definition = function(object,value){
@@ -49,8 +60,10 @@ setReplaceMethod("name",
     return(object)
 })    
 
-#' @rdname methods-segvis_block-gs
-#' @name regions
+##' @rdname regions-methods
+##' @aliases regions<-
+##' @docType methods
+##' @exportMethod regions<-
 setReplaceMethod("regions",
   signature = signature(object = "segvis_block",value = "GRanges"),
   definition = function(object,value){    
@@ -59,8 +72,10 @@ setReplaceMethod("regions",
     return(object)    
 })
 
-#' @rdname methods-segvis_block-gs
-#' @name cover_table
+##' @rdname cover_table-methods
+##' @aliases cover_table<-
+##' @docType methods
+##' @exportMethod cover_table<-
 setReplaceMethod("cover_table",
   signature = signature(object = "segvis_block",value = "data.table"),
   definition = function(object,value){    
@@ -70,8 +85,10 @@ setReplaceMethod("cover_table",
     return(object)    
 })           
 
-#' @rdname methods-segvis_block-gs
-#' @name bandwidth
+##' @rdname bandwidth-methods
+##' @aliases bandwidth<-
+##' @docType methods
+##' @exportMethod bandwidth<-
 setReplaceMethod("bandwidth",
   signature = signature(object = "segvis_block",value = "numeric"),
   definition = function(object,value){
@@ -81,8 +98,10 @@ setReplaceMethod("bandwidth",
     return(object)
 })           
 
-#' @rdname methods-segvis_block-gs
-#' @name normConst
+##' @rdname normConst-methods
+##' @aliases normConst<-
+##' @docType methods
+##' @exportMethod normConst<-
 setReplaceMethod("normConst",
   signature = signature(object = "segvis_block",value = "numeric"),
   definition = function(object,value){
@@ -91,25 +110,27 @@ setReplaceMethod("normConst",
     return(object)
 })                        
 
-#' @rdname methods-segvis_block-summarize
-#' @name summarize
-setMethods("summarize",
-  signature = signature(object = "segvis_block",FUN = "function",... = "ANY"),
+##' @rdname summarize-methods
+##' @aliases summarize,ANY,ANY-method
+##' @docType methods
+##' @exportMethod summarize
+setMethod("summarize",
+  signature = "ANY",
   definition = function(object,FUN,...){
     ## check length of matches
-    lengths = cover_table(object)[,length(coord),by = .(chr,match)]
+    V1 <- center <- tagCounts <- NULL
+    lengths <- cover_table(object)[,length(coord),by = list(chr,match)]
     if(length(u <- unique(lengths[,(V1)])) > 1){
        warning("All regions must have the same length")
     }
     out <- copy(cover_table(object))
+    center <- NULL
     out[,center := 0L]
-    out[,center := out[,coord - min(coord) + 1,by = .(chr,match)][,(V1)]]           
-    summary <- out[,FUN(tagCounts,...),by =.(center)]
+    out[,center := out[,coord - min(coord) + 1,by = list(chr,match)][,(V1)]]           
+    summary <- out[,FUN(tagCounts,...),by =list(center)]
     return(summary[,(V1)])
 })
                      
-# @rdname profileMatrix-methods
-# @name show
 setMethod("show",
   signature = signature(object = "segvis_block"),
   definition = function(object){
@@ -123,31 +144,47 @@ setMethod("show",
     show(regions(object))
 })
 
-#' @rdname methods-segvis_block-normalize
-#' @name normalize
-setMethods("normalize",
-  signature = signature(object = "segvis_block",value = "numeric",base = "numeric"),
-  definition = function(object, value,base){
-    if(missing(base))base = 1000000
-    if(missing(value))value = base/normConst(object)
+##' @rdname normalize-methods
+##' @aliases normalize
+##' @docType methods
+##' @exportMethod normalize
+setMethod("normalize",
+  signature = signature(object = "segvis_block",base = "numeric"),
+  definition = function(object,base){
+    tagCounts <- NULL
+    value = base/normConst(object)
     stopifnot(value > 0)
     cover_table(object)[,tagCounts := value * tagCounts]
     object@.isScaled = TRUE
     return(object) 
 })
-           
-#' @rdname methods-segvis_block-subset
-#' @name subset
-setMethod("subset",
+
+##' @rdname normalize-methods
+##' @aliases normalize
+##' @docType methods
+##' @exportMethod normalize
+setMethod("normalize",
+  signature = signature(object = "segvis_block"),
+  definition = function(object){
+    return(normalize(object,1e6))
+})
+
+##' @rdname subset_block-methods
+##' @aliases subset_block,ANY-method
+##' @docType methods
+##' @exportMethod subset_block
+setMethod("subset_block",
   signature = signature(object = "segvis_block",condition = "ANY"),
   definition = function(object, condition){
     cond <- .subset_logical(object,substitute(condition))
     return(.filter_sb(object,cond))
 })
 
-#' @rdname methods-segvis_block-addColumn
-#' @name addColumn
-setMethods("addColumn",
+##' @rdname addColumn-methods
+##' @aliases addColumn,ANY-method
+##' @docType methods
+##' @exportMethod addColumn
+setMethod("addColumn",
   signature = signature(object = "segvis_block",name = "character",col = "ANY"),
   definition = function(object,name,col){
     stopifnot(length(col) == length(regions(object)))    

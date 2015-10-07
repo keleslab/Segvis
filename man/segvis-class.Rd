@@ -3,9 +3,9 @@
 \docType{class}
 \name{segvis-class}
 \alias{segvis-class}
-\title{segvis class description}
+\title{Segvis class description}
 \description{
-This object is the base class of the segvis package. It contains all the information necessary for the calculation of coverage curves
+This object is the base class of the segvis package. It contains all the information necessary for the calculation of coverage curves.
 }
 \section{Slots}{
 
@@ -37,6 +37,6 @@ This object is the base class of the segvis package. It contains all the informa
 \item{\code{.coverageCalculated}}{logical - Indicates if the coverage has been calculated]}
 }}
 \seealso{
-\code{\link{Segvis}}
+\code{\link{buildSegvis}}
 }
 

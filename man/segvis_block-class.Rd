@@ -18,8 +18,11 @@ Contains a data.table with the individual coverages for each region
 
 \item{\code{bandwidth}}{Numeric value used to smooth the individual profiles}
 
-\item{\code{normCont}}{Numeric normalizing contanst}
+\item{\code{normConst}}{Numeric normalizing contanst}
 
 \item{\code{.isScaled}}{Logical value representing if the profiles are scaled to \code{normConst}}
 }}
+\seealso{
+\code{\link{Segvis_block}}
+}
 
