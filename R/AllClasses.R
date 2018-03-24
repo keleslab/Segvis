@@ -1,121 +1,127 @@
 ##' @importFrom methods setClass setGeneric setMethod setRefClass
+##' @import BiocParallel
 NULL
 
-##' reads class description
-##'
-##' Contains the reads obtained in a ChIP - seq experiment separated by strand and then by chromosome. It has one component for each strand which are object of the data.table class with a match column to identify the regions
-##'
-##' @slot readsF List of data.table objects containing the reads of the ChIP - Seq experiment that have + strand.
-##' @slot readsR List of data.table object containning the reads of the ChIP - Seq experiment that have - strand
-##' @seealso \code{\link{loadReads}}
-##'
-##' @name reads-class
-##' @rdname reads-class
-##' @exportClass reads
-setClass("reads",
-  representation(readsF = "list",readsR = "list"),
-  prototype = prototype(readsF = list(),readsR = list()))
+# .ma <- function(x,n) filter(x,rep(1/n,n),sides = 2)
 
-setValidity("reads",
-  function(object){
-    return(length(object@readsF) == length(object@readsR))
-})            
+##' @rdname SegvisData
+##' @export
+setClass("SegvisData",
+         contains = "GRanges",
+         representation = representation(
+           files = "character",
+           is_pet = "logical",
+           frag_len = "numeric",
+           covers = "list",
+           fwd_covers = "list",
+           bwd_covers = "list",
+           nreads = "numeric"
+           ),
+         prototype = prototype(
+           files = "",
+           is_pet = FALSE,
+           frag_len = 1L,
+           covers = list(),
+           fwd_covers = list(),
+           bwd_covers = list(),
+           nreads = 0L
+           ))
 
-##' Segvis class description
-##'
-##' This object is the base class of the segvis package. It contains all the information necessary for the calculation of coverage curves.
-##'
-##' @slot name Character with the name of the profiles
-##' @slot regions GRanges object with the regions for which the profile want to be calcualted
-##' @slot file Character with the name of the file that contains the reads
-##' @slot maxBandwidth Numeric value with the maximum bandwidth accepted when smoothing profiles. Must be odd
-##' @slot fragLen Numeric value with the fragment length to resize the reads (if it is zero then it doesn't resize the reads)
-##' @slot chr character vector, with the chromosomes to be considered
-##' @slot isPET logical, Indicates is the reads come from a PET experiments or a SET experiment
-##' @slot reads Reads object, which contains the reads used to build the profile separated by strand
-##' @slot profiles RleList - For each region, there is a Rle object
-##' @slot .haveRegions logical - Indicates if the object have the regions loaded
-##' @slot .haveReads logical - Indicates if the object have the reads loaded
-##' @slot .readsMatched logical - Indicates if the read have been matched to the regions
-##' @slot .coverageCalculated logical - Indicates if the coverage has been calculated]
-##' @seealso \code{\link{buildSegvis}}
-##' @name segvis-class
-##' @rdname segvis-class
-##' @exportClass segvis
-setClass("segvis",
-  representation(name = "character",
-                 regions = "GRanges",
-                 file = "character",
-                 maxBandwidth = "numeric",
-                 fragLen = "numeric",
-                 chr = "character",
-                 isPET = "logical",                 
-                 reads = "reads",
-                 profiles = "list",
-                 .haveRegions = "logical",
-                 .haveReads = "logical",
-                 .readsMatched = "logical",
-                 .coverageCalculated = "logical"
-                 ),
-  prototype = prototype(name = "",
-                 regions = GRanges(),
-                 file = "",
-                 maxBandwidth = 1,
-                 fragLen = 0,
-                 chr = "",
-                 isPET = FALSE,
-                 reads = new("reads"),
-                 profiles = list(),
-                 .haveRegions = FALSE,
-                 .haveReads = FALSE,
-                 .readsMatched = FALSE,
-                 .coverageCalculated = FALSE)
-)
+setValidity("SegvisData",
+            function(object){
+              return(length(object@files) >= 1 &
+                       all(object@frag_len >= 0))
+            })
 
-setValidity("segvis",
-  function(object){
-  return(object@fragLen >=0 & object@maxBandwidth >=1)
-})  
-
-##' segvis_block class description
+##' SegvisData object and constructors
 ##'
-##' Contains a data.table with the individual coverages for each region
+##' \code{SegvisData} is a subclass of \code{GenomicRanges}, used to visualize
+##' high-thoughput sequencing experiments across a set of user - defined
+##' genomic regions.
 ##'
-##' @slot name Character with the name of the profiles
-##' @slot regions GRanges object with the regions of the individuals profiles
-##' @slot cover_table data.table with the individuals coverages for each region
-##' @slot bandwidth Numeric value used to smooth the individual profiles
-##' @slot normConst Numeric normalizing contanst
-##' @slot .isScaled Logical value representing if the profiles are scaled to \code{normConst}
-##' @seealso \code{\link{Segvis_block}}
-##' @exportClass segvis_block
-##' @name segvis_block-class
-##' @rdname segvis_block-class
-setClass("segvis_block",
-  representation(name = "character",
-                 regions = "GRanges",
-                 cover_table = "data.table",
-                 bandwidth = "numeric",
-                 normConst = "numeric",
-                 .isScaled = "logical"),
-  prototype = prototype(name = "",
-                 regions = GRanges(),
-                 cover_table = data.table(),
-                 bandwidth = 1,
-                 normConst = 1,
-                 .isScaled = FALSE)
-)
-
-##' segvis_block_list class description
+##' @param regions a \code{GRanges} object with the regions to be considered.
+##' @param files a character vector with the location of the bam files that
+##' contain the aligned reads.
+##' @param is_pet a logical vector with the same length as files indicating if
+##' the aligned reads in the respective bam file are paired.
+##' @param frag_len a numeric vector representing the average fragment length
+##' to which the aligned reads in their respective bam file are going to be
+##' extended. For PE reads, this parameter is not considered.
+##' @param mc.cores a numeric value with the number of cores to use,
+##' i.e. at most how many child processes will be run simultaneously.
 ##'
-##' Contains a list of \code{segvis_block} objects
+##' @return  \code{SegvisData} returns a \code{SegvisData} object which contains
+##' the forward, backward and aggregated coverage for every aligned read file in
+##' \code{files}.
+##' @aliases SegvisData SegvisData-class
 ##'
-##' @exportClass segvis_block_list
-##' @name segvis_block_list-class
-##' @rdname segvis_block_list-class
-setClass("segvis_block_list",         
-  prototype = prototype(elementType = "segvis_block"),
-  contains = "list"
-)      
-
-
+##' @docType class
+##
+## @examples
+##
+## dr = system.file("extdata","example",package = "Segvis",mustWork = TRUE)
+## files = list.files(dr,pattern = "bam",full.names =TRUE)
+## files = files[grep("bai",files,invert = TRUE)]
+## reg = list.files(dr,pattern = "narrow",full.names =TRUE)
+## reg = readBedFile(reg[1])
+## segvis = SegvisData(regions = reg,files)
+##
+##' @rdname SegvisData
+##' @export
+SegvisData = function(regions,files,is_pet = rep(FALSE,length(files)),
+                       frag_len = 1,mc.cores = getOption("mc.cores" , 2L))
+{
+  stopifnot(is.character(files),all(file.exists(files)),
+            is.logical(is_pet),is.numeric(frag_len))
+  if(length(is_pet) == 1){
+    is_pet = rep(is_pet,length(files))
+  }
+  if(length(frag_len) == 1){
+    frag_len = rep(frag_len,length(files))
+  }
+  stopifnot(length(files) == length(is_pet) ,
+            length(files) == length(frag_len))
+  
+  if(Sys.info()[["sysname"]] == "Windows"){
+    parallel_param = SnowParam(workes = mc.cores , type = "SOCK")
+  }else{
+    parallel_param = MulticoreParam(workers = mc.cores)
+  }
+  
+  fwd_covers = bpmapply(.readFileCover,
+                        files,
+                        is_pet,
+                        frag_len,
+                        MoreArgs = list(st = "+"),
+                        BPPARAM = parallel_param,
+                        SIMPLIFY = FALSE)
+  
+  bwd_covers = bpmapply(.readFileCover,
+                        files,
+                        is_pet,
+                        frag_len,
+                        MoreArgs = list(st = "-"),
+                        BPPARAM = parallel_param,
+                        SIMPLIFY = FALSE)
+  
+  covers = mapply("+",fwd_covers,bwd_covers,
+                  SIMPLIFY = FALSE)
+  nreads = bpmapply(.countReads,
+                    files,is_pet,
+                    BPPARAM = parallel_param,
+                    SIMPLIFY = TRUE)
+  names(fwd_covers) = NULL
+  names(bwd_covers) = NULL
+  names(covers) = NULL
+  names(nreads) = NULL
+  frag_len[is_pet] = 0
+  new("SegvisData",regions,
+      files = files,
+      is_pet = is_pet,
+      frag_len = frag_len,
+      covers = covers,
+      fwd_covers = fwd_covers,
+      bwd_covers = bwd_covers,
+      nreads = nreads
+  )
+}
